@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Météo Splash v6.6-B</title>
+
+<link href="style.css" rel="stylesheet"/>
+<script defer src="script.js"></script>
+
+<!-- Leaflet -->
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+
+<body class="theme-auto weather-clear">
+
+<div class="rain-scene" id="rain-scene">
+  <div id="storm-layer"></div>
+  <div id="snow-layer"></div>
+  <div id="sun-layer"></div>
+</div>
+
+<div class="app-shell">
+
+<!-- =================== HEADER =================== -->
+<header class="app-header glass-card">
+  <div class="brand">
+    <div class="brand-logo">🌈</div>
+    <div class="brand-text">
+      <h1>Météo Splash</h1>
+      <p class="brand-tagline">Prévisions météo</p>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <div class="header-buttons">
+      <span class="radar-clock" id="radar-clock">--:--</span>
+      <button class="icon-button" id="btn-radar">🛰 Radar</button>
+      <button class="icon-button theme-toggle" id="btn-theme-toggle">🌓 Auto</button>
+      <button class="icon-button location" id="btn-geolocate">📍 Ma position</button>
+      <button class="icon-button speak" id="btn-speak">🗣 Météo parlée</button>
+      <button class="icon-button add-city" id="btn-add-city" title="Ajouter une ville">➕</button>
+    </div>
+  </div>
+</header>
+
+<!-- ================= POPUP RADAR ================= -->
+<div class="radar-overlay hidden" id="radar-overlay">
+
+  <!-- 🔴 TOP BAR iOS SAFE -->
+  <div class="radar-topbar">
+    <button class="icon-button close-popup" id="btn-close-radar">✕</button>
+  </div>
+
+  <div class="overlay-backdrop"></div>
+
+  <div class="radar-popup glass-card">
+    <!-- ❌ Bouton retiré d’ici (iOS bug) -->
+    <header class="popup-header">
+      <h2>Radar météo (v6.6-B)</h2>
+    </header>
+
+    <p class="radar-subtitle">
+      Radar pluie (RainViewer), vent et températures (Open-Meteo / OpenWeather)
+    </p>
+
+    <div class="radar-map-wrapper">
+      <div class="radar-map" id="radar-map"></div>
+
+      <div class="radar-controls">
+        <div class="radar-mode-shell">
+          <button class="pill-button pill-button-active" id="radar-mode-toggle">
+            Radar réel
+          </button>
+        </div>
+
+        <div class="radar-timeline-wrapper">
+          <div class="radar-timeline-header">
+            <button class="radar-play-button" id="radar-play">▶︎</button>
+            <div class="radar-window-label">
+              <span id="radar-window-text">Maintenant → +12 h</span>
+            </div>
+          </div>
+          <input
+            id="radar-timeline-slider"
+            type="range"
+            min="0"
+            max="12"
+            step="1"
+            value="0"
+          />
+        </div>
+
+        <div class="radar-legend">
+          <div class="legend-container hidden" id="legend-container">
+
+            <div class="legend-group" data-type="rain">
+              <span class="legend-dot color-rain-1"></span> Faible
+              <span class="legend-dot color-rain-2"></span> Modérée
+              <span class="legend-dot color-rain-3"></span> Forte
+              <span class="legend-dot color-rain-4"></span> Très forte
+            </div>
+
+            <div class="legend-group hidden" data-type="wind">
+              <span class="legend-dot color-wind-1"></span> Faible
+              <span class="legend-dot color-wind-2"></span> Modéré
+              <span class="legend-dot color-wind-3"></span> Fort
+              <span class="legend-dot color-wind-4"></span> Très fort
+            </div>
+
+            <div class="legend-group hidden" data-type="temp">
+              <span class="legend-dot color-temp-1"></span> Très froid
+              <span class="legend-dot color-temp-2"></span> Froid
+              <span class="legend-dot color-temp-3"></span> Doux
+              <span class="legend-dot color-temp-4"></span> Chaud / Très chaud
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="radar-tabs">
+      <button class="radar-tab radar-tab-active" id="radar-tab-rain">Pluie</button>
+      <button class="radar-tab" id="radar-tab-wind">Vent</button>
+      <button class="radar-tab" id="radar-tab-temp">Températures</button>
+    </div>
+
+    <div class="radar-grid" id="radar-grid"></div>
+  </div>
+</div>
+
+<!-- ===================== MAIN ===================== -->
+<!-- ⬇️ LE RESTE DE TON HTML EST STRICTEMENT INCHANGÉ ⬇️ -->
+
+<!-- ===================== MAIN ===================== -->
+<main class="layout">
+<!-- Colonne gauche -->
+<section class="column-left">
+<section class="card glass-card details-card">
+<header class="card-header">
+<div>
+<h2 id="details-title">Aucune ville sélectionnée</h2>
+<p class="card-subtitle" id="details-subtitle">Ajoute une ville ou ta position</p>
+</div>
+<button class="ghost-button history-button" id="btn-24h">🕒 Prévisions 24h</button>
+<button class="ghost-button history-button" id="btn-history">📜 Historique</button>
+</header>
+<div class="timeline-24h hidden" id="timeline-24h"></div>
+<div class="details-grid" id="details-current"></div>
+<div class="detail-block hidden" id="details-history"></div>
+<div class="wind-block">
+<div class="wind-compass" id="wind-compass">
+<div class="compass-circle">
+<span class="compass-label compass-n">N</span>
+<span class="compass-label compass-e">E</span>
+<span class="compass-label compass-s">S</span>
+<span class="compass-label compass-w">O</span>
+<div class="compass-arrow"></div>
+</div>
+</div>
+<div class="wind-info">
+<p class="wind-main" id="wind-line-main">Vent : —</p>
+<p class="wind-sub" id="wind-line-sub">Rafales : —</p>
+</div>
+<!-- ⭐ Widget lever/coucher SOLO (version correcte) -->
+<div class="sun-times" id="sun-times">
+<div class="sun-item">
+<span class="sun-icon">🌅</span>
+<span id="sunrise-time">--:--</span>
+</div>
+<div class="sun-item">
+<span class="sun-icon">🌇</span>
+<span id="sunset-time">--:--</span>
+</div>
+</div>
+<div aria-hidden="true" class="sun-arc-wrap" id="sun-arc-wrap">
+  <svg
+    id="sun-arc"
+    class="sun-arc"
+    viewBox="0 0 200 100"
+    width="140"
+    height="70"
+    style="overflow: visible"
+    aria-label="Course du soleil"
+  >
+    <!-- Arc -->
+    <path
+      id="sun-arc-path"
+      d="M20 80 A80 80 0 0 1 180 80"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="10"
+      opacity="0.25"
+      stroke-linecap="round"
+    />
+
+    <!-- Progression -->
+    <path
+      id="sun-arc-progress"
+      d="M20 80 A80 80 0 0 1 180 80"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="10"
+      opacity="0.65"
+      stroke-linecap="round"
+      stroke-dasharray="0 999"
+    />
+
+    <!-- Soleil -->
+    <circle
+      id="sun-dot"
+      cx="20"
+      cy="80"
+      r="7"
+      fill="currentColor"
+    />
+  </svg>
+
+  <div class="sun-arc-label" id="sun-arc-label">Soleil</div>
+</div>
+
+
+</div>
+</section>
+<section class="card glass-card forecast-card">
+<header class="card-header">
+<div>
+<h2>Prévisions</h2>
+<p class="card-subtitle">Résumé des jours à venir</p>
+</div>
+<div class="forecast-toggle">
+<button class="pill-button pill-button-active" id="btn-forecast-7">7 jours</button>
+<button class="pill-button" id="btn-forecast-14">14 jours</button>
+</div>
+</header>
+<div class="forecast-list" id="forecast-list"></div>
+</section>
+</section>
+<!-- Colonne droite -->
+<section class="column-right">
+<div class="add-city-panel hidden-merged" id="add-city-panel">
+<input autocomplete="off" class="ios-search-input" id="city-input" placeholder="Ajouter une ville..." type="text"/>
+<ul class="autocomplete-list inline-autocomplete" id="autocomplete-list"></ul>
+</div>
+<section class="card glass-card cities-card">
+<header class="card-header">
+<div>
+<h2>Mes villes</h2>
+<p class="card-subtitle">Clique sur ➕ pour ajouter</p>
+</div>
+<div class="sort-shell">
+<label for="sort-select">Tri</label>
+<select id="sort-select">
+<option value="manual">Manuel</option>
+<option value="alpha">Alphabétique</option>
+<option value="temp">Température</option>
+</select>
+</div>
+</header>
+<div class="city-list" id="city-list"></div>
+<!-- ⭐ Version CORRIGÉE : footer propre -->
+<div class="cities-footer">
+<button class="ghost-button danger" id="btn-reset">Réinitialiser</button>
+</div>
+</section>
+<section class="card glass-card tips-card">
+<h3>Conseil du jour</h3>
+<p class="hint" id="details-tip">Ajoute une ville ou utilise la géolocalisation.</p>
+</section>
+</section>
+</main>
+<!-- OVERLAY AJOUT VILLE -->
+<div class="day-overlay" id="add-city-overlay">
+<div class="overlay-backdrop"></div>
+<div class="day-popup glass-card">
+<header class="popup-header">
+<h2>Ajouter une ville</h2>
+<button class="icon-button close-popup" id="btn-close-add-city">✕</button>
+</header>
+<div id="add-city-popup-slot"></div>
+</div>
+</div>
+<footer class="app-footer">
+<p>Météo Splash · Bright Splash Studio · Données : <a href="https://open-meteo.com">Open-Meteo</a></p>
+</footer>
+</div>
+<div class="toast" id="toast"></div>
+<!-- OVERLAY DÉTAIL JOUR -->
+<div class="day-overlay" id="day-overlay">
+<div class="overlay-backdrop"></div>
+<div class="day-popup glass-card">
+<header class="popup-header">
+<h2 id="day-overlay-title">Détail du jour</h2>
+<button class="icon-button close-popup" id="btn-close-day">✕</button>
+</header>
+<p class="day-overlay-subtitle" id="day-overlay-subtitle"></p>
+<div class="day-tabs">
+<button class="pill-button pill-button-active" id="day-tab-temp">Température</button>
+<button class="pill-button" id="day-tab-rain">Pluie</button>
+<button class="pill-button" id="day-tab-wind">Vent</button>
+<button class="pill-button" id="day-tab-humidity">Humidité</button>
+</div>
+<canvas class="day-graph active-day-graph" id="chart-temp"></canvas>
+<canvas class="day-graph" id="chart-rain"></canvas>
+<canvas class="day-graph" id="chart-wind"></canvas>
+<canvas class="day-graph" id="chart-humidity"></canvas>
+</div>
+</div>
+</body>
+</html>
