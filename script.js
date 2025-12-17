@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Météo – Script
+   Météo Splash – Script
    Version INTERMEDIAIRE (stabilité maximale)
    ========================================================================== */
 
@@ -42,6 +42,7 @@ const btnReset = document.getElementById("btn-reset");
 const sortSelect = document.getElementById("sort-select");
 
 const detailsTitle = document.getElementById("details-title");
+const cityLandmarkBg = document.getElementById("city-landmark-bg");
 const detailsSubtitle = document.getElementById("details-subtitle");
 const detailsCurrent = document.getElementById("details-current");
 const detailsHistory = document.getElementById("details-history");
@@ -96,8 +97,27 @@ function getHourFromLocalISO(iso) {
 
 
 function degreeToCardinal(angle) {
-  const directions = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
-  const index = Math.round((angle % 360) / 45) % 8;
+if (typeof angle !== "number") return "—";
+  const directions = [
+    "Nord",
+    "Nord-Nord-Est",
+    "Nord-Est",
+    "Est-Nord-Est",
+    "Est",
+    "Est-Sud-Est",
+    "Sud-Est",
+    "Sud-Sud-Est",
+    "Sud",
+    "Sud-Sud-Ouest",
+    "Sud-Ouest",
+    "Ouest-Sud-Ouest",
+    "Ouest",
+    "Ouest-Nord-Ouest",
+    "Nord-Ouest",
+    "Nord-Nord-Ouest"
+  ];
+
+  const index = Math.round(angle / 22.5) % 16;
   return directions[index];
 }
 
@@ -243,6 +263,77 @@ function updateTip(j) {
   }
 
   detailsTip.textContent = tip;
+}
+
+
+/* --------------------------------------------------------------------------
+   2-bis. LANDMARK EN FOND (symbole ville dans la carte détails)
+-------------------------------------------------------------------------- */
+
+function normalizeCityKey(s) {
+  try {
+    return String(s || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  } catch (_) {
+    return String(s || "").trim().toLowerCase();
+  }
+}
+
+function getLandmarkForCity(ci) {
+  const name = normalizeCityKey(ci?.name || "");
+  const country = normalizeCityKey(ci?.country || "");
+
+  const map = {
+    "paris": "🗼",
+    "london": "🎡",
+    "rome": "🏛️",
+    "naples": "🌋",
+    "new york": "🗽",
+    "san francisco": "🌉",
+    "los angeles": "🎬",
+    "chicago": "🏙️",
+    "miami": "🌴",
+    "barcelona": "⛪",
+    "madrid": "🏰",
+    "lisbon": "⛵",
+    "berlin": "🐻",
+    "amsterdam": "🚲",
+    "brussels": "🧇",
+    "geneva": "⛲",
+    "zurich": "🏔️",
+    "tokyo": "🗼",
+    "osaka": "🏯",
+    "kyoto": "⛩️",
+    "sydney": "🦘",
+    "melbourne": "🎭",
+    "dubai": "🏙️",
+    "singapore": "🦁",
+    "montreal": "🍁",
+    "quebec": "⚜️"
+  };
+
+  if (map[name]) return map[name];
+
+  // fallback simple par pays (optionnel)
+  if (country === "france") return "🗼";
+  if (country === "italy") return "🏛️";
+  if (country === "united states" || country === "usa") return "🏙️";
+  if (country === "united kingdom") return "🎡";
+
+  return "🏙️";
+}
+
+function setCityLandmark(ci) {
+  if (!cityLandmarkBg) return;
+  if (!ci || !ci.name) {
+    cityLandmarkBg.textContent = "";
+    return;
+  }
+  cityLandmarkBg.textContent = getLandmarkForCity(ci);
 }
 
 /* --------------------------------------------------------------------------
@@ -600,24 +691,19 @@ function setGeolocateSuccess(cityName) {
 
 
 function setGeolocateError(message) {
-  // ❌ INTERDIT au démarrage
-  if (!btnGeolocate || !btnGeolocate.classList.contains("location-loading")) {
-    return;
-  }
-
+   if (hasValidLocation) return; // ✅ BLOQUE LE TOAST ROUGE
   showToast(message || "Impossible de déterminer votre position.", "error");
   setGeolocateIdle();
 }
 
 async function geolocateByIp() {
-  if (hasValidLocation) return;
-
+if (hasValidLocation) return; // 🔒
   try {
     const r = await fetch("https://ipapi.co/json/");
     const j = await r.json();
-
     if (!j || !j.city || !j.latitude || !j.longitude) {
-      return; // ⛔ PAS de toast rouge ici
+      setGeolocateError("Impossible de récupérer votre position approximative.");
+      return;
     }
 
     const lat = j.latitude;
@@ -631,15 +717,20 @@ async function geolocateByIp() {
       isCurrentLocation: true,
     });
 
-    setGeolocateSuccess(j.city); // 🟢 SEUL toast visible
+    hideToast(); // ✅ efface tout message d’erreur précédent
 
-  } catch (err) {
-    console.error("Erreur géoloc IP", err);
+    suggestNearbyCity(lat, lon); // ✅ maintenant OK
 
-    // 🔴 erreur finale UNIQUEMENT ici
-    setGeolocateError("Impossible de déterminer votre position.");
-  }
+    setGeolocateSuccess(j.city);
+  } 
+   catch (err) {
+     console.error("Erreur géoloc IP", err);
+      if (!hasValidLocation) {
+        setGeolocateError("Impossible de déterminer votre position.");
+   }
+ }
 }
+
 
 
 if (btnGeolocate) {
@@ -701,13 +792,9 @@ async function onGeoSuccess(position) {
 }
 
 function onGeoError(err) {
-  console.warn("Géolocalisation navigateur refusée:", err);
-
+  console.warn("Geo error:", err);
   if (hasValidLocation) return;
-
-  // ⛔ AUCUN toast rouge ici
-  // ✅ on bascule silencieusement vers l’IP
-  geolocateByIp();
+  geolocateByIp(); // ⬅️ on bascule DIRECT vers IP
 }
 
 /* --------------------------------------------------------------------------
@@ -768,6 +855,7 @@ function removeCity(idx) {
     if (windLineSub) windLineSub.textContent = "Rafales : —";
     forecastList.innerHTML = "";
     applyWeatherBackground(null);
+    setCityLandmark(null);
     updateTip(null);
   }
 }
@@ -900,6 +988,8 @@ async function loadCityWeather(ci) {
   detailsTitle.textContent = ci.name;
   detailsSubtitle.textContent = `Lat ${ci.lat.toFixed(2)}, Lon ${ci.lon.toFixed(2)}`;
 
+  setCityLandmark(selectedCity);
+
   try {
     const url =
       "https://api.open-meteo.com/v1/forecast" +
@@ -913,6 +1003,11 @@ async function loadCityWeather(ci) {
     const r = await fetch(url);
     if (!r.ok) throw new Error("Open-Meteo KO");
     const j = await r.json();
+
+    /* =========================
+       📦 SOURCE UNIQUE DE DONNÉES
+    ========================= */
+    lastForecastData = j;
 
     /* =========================
        ☀️ LEVER / COUCHER
@@ -953,7 +1048,7 @@ async function loadCityWeather(ci) {
     ci.utcOffset = j.utc_offset_seconds;
     updateCityClockFromOffset(j.utc_offset_seconds);
 
-    // 🌗 Thème AUTO / JOUR / NUIT (source unique)
+    // 🌗 Thème AUTO / JOUR / NUIT
     applyThemeMode();
 
     /* =========================
@@ -981,7 +1076,6 @@ async function loadCityWeather(ci) {
        📆 PRÉVISIONS 7 / 14 JOURS
     ========================= */
     updateForecastButtonsActiveState(7);
-    lastForecastData = j;
     renderForecast(j, 7);
 
   } catch (err) {
@@ -1057,19 +1151,32 @@ function renderCurrent(j) {
 -------------------------------------------------------------------------- */
 
 function renderWind(j) {
-  if (!windArrow) return;
+  if (!windArrow || !j?.current) return;
+
   const c = j.current;
-  const dir = c.wind_direction_10m;
-  const speed = c.wind_speed_10m;
-  const gust = c.wind_gusts_10m;
+  const rawDir = typeof c.wind_direction_10m === "number" ? c.wind_direction_10m : null;
+  const speed = typeof c.wind_speed_10m === "number" ? c.wind_speed_10m : null;
+  const gust  = typeof c.wind_gusts_10m === "number" ? c.wind_gusts_10m : null;
 
-  windArrow.style.transform = `translate(-50%, -50%) rotate(${dir}deg)`;
+  // Arrow: si ton pictogramme pointe "vers le haut" par défaut (Nord),
+  // alors rawDir correspond à la direction D'OU vient le vent (standard météo).
+  const visualDir = rawDir == null ? 0 : (rawDir + 180) % 360;
 
+  // ✅ rotation cohérente (utilise visualDir)
+  const ARROW_OFFSET_DEG = 0; // teste 10, -10, 15, -15…
+   windArrow.style.transform =
+  `translate(-50%, -50%) rotate(${visualDir + ARROW_OFFSET_DEG}deg)`;
+
+  // ✅ texte cohérent (utilise rawDir)
   if (windLineMain) {
-    windLineMain.textContent = `Vent : ${degreeToCardinal(dir)} (${speed} km/h)`;
+    const dirLabel = rawDir == null ? "—" : degreeToCardinal(rawDir);
+    const sp = speed == null ? "—" : (Math.round(speed * 10) / 10);
+    windLineMain.textContent = `Vent : ${dirLabel} (${sp} km/h)`;
   }
+
   if (windLineSub) {
-    windLineSub.textContent = `Rafales : ${gust} km/h`;
+    const gs = gust == null ? "—" : (Math.round(gust * 10) / 10);
+    windLineSub.textContent = `Rafales : ${gs} km/h`;
   }
 }
 
@@ -2360,7 +2467,7 @@ if (btnRadar && radarOverlay) {
 }
 
 if (btnCloseRadar) {
-  const closeRadar = () => {
+  btnCloseRadar.addEventListener("click", () => {
     radarOverlay.classList.remove("active");
     radarOverlay.classList.add("hidden");
     document.body.classList.remove("no-scroll");
@@ -2370,15 +2477,6 @@ if (btnCloseRadar) {
       radarMapInstance.removeLayer(radarFutureOverlay);
       radarFutureOverlay = null;
     }
-  };
-
-  // 🖱️ Desktop
-  btnCloseRadar.addEventListener("click", closeRadar);
-
-  // 📱 iOS (Safari + Chrome)
-  btnCloseRadar.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    closeRadar();
   });
 }
 
