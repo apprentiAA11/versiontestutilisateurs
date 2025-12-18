@@ -42,14 +42,11 @@ const btnReset = document.getElementById("btn-reset");
 const sortSelect = document.getElementById("sort-select");
 
 const detailsTitle = document.getElementById("details-title");
-const cityLandmarkBg = document.getElementById("city-landmark-bg");
 const detailsSubtitle = document.getElementById("details-subtitle");
 const detailsCurrent = document.getElementById("details-current");
 const detailsHistory = document.getElementById("details-history");
 const btnHistory = document.getElementById("btn-history");
 
-const windCompass = document.getElementById("wind-compass");
-const windArrow = windCompass ? windCompass.querySelector(".compass-arrow") : null;
 const windLineMain = document.getElementById("wind-line-main");
 const windLineSub = document.getElementById("wind-line-sub");
 
@@ -73,6 +70,8 @@ const dayGraphTemp = document.getElementById("chart-temp");
 const dayGraphRain = document.getElementById("chart-rain");
 const dayGraphWind = document.getElementById("chart-wind");
 const dayGraphHumidity = document.getElementById("chart-humidity");
+const sunriseTime = document.getElementById("sunrise-time");
+const sunsetTime  = document.getElementById("sunset-time");
 
 let selectedCity = null;
 let weatherCache = {};
@@ -95,30 +94,24 @@ function getHourFromLocalISO(iso) {
   return hh + mm / 60;
 }
 
-
 function degreeToCardinal(angle) {
-if (typeof angle !== "number") return "—";
-  const directions = [
-    "Nord",
-    "Nord-Nord-Est",
-    "Nord-Est",
-    "Est-Nord-Est",
-    "Est",
-    "Est-Sud-Est",
-    "Sud-Est",
-    "Sud-Sud-Est",
-    "Sud",
-    "Sud-Sud-Ouest",
-    "Sud-Ouest",
-    "Ouest-Sud-Ouest",
-    "Ouest",
-    "Ouest-Nord-Ouest",
-    "Nord-Ouest",
-    "Nord-Nord-Ouest"
-  ];
-
-  const index = Math.round(angle / 22.5) % 16;
+  const directions = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
+  const index = Math.round((angle % 360) / 45) % 8;
   return directions[index];
+}
+function getTempColor(t) {
+  if (t == null || isNaN(t)) return "#9ca3af"; // gris neutre
+
+  if (t < -10) return "#0b3c5d";        // bleu foncé
+  if (t < 0)   return "#1e6091";        // bleu moyen
+  if (t < 5)   return "#4ea8de";        // bleu clair
+  if (t < 10)  return "#90dbf4";        // bleu très clair
+  if (t < 15)  return "#b7e4c7";        // vert clair
+  if (t < 20)  return "#74c69d";        // vert moyen
+  if (t < 25)  return "#2d6a4f";        // vert foncé
+  if (t < 30)  return "#f4a261";        // orange
+  if (t < 35)  return "#e63946";        // rouge
+  return "#d00000";                     // rouge vif
 }
 
 function formatDateISO(date) {
@@ -176,10 +169,16 @@ function renderTimeline24h(j) {
       <div class="hour-temp">${Math.round(temps[i])}°</div>
     `;
 
+    const tempDiv = item.querySelector(".hour-temp");
+    if (tempDiv) {
+      tempDiv.style.color = getTempColor(temps[i]);
+    }
+
     timeline24h.appendChild(item);
     shown++;
   }
 }
+
 function getWeatherIcon(code) {
   if (code == null) return "";
   // Clair
@@ -263,77 +262,6 @@ function updateTip(j) {
   }
 
   detailsTip.textContent = tip;
-}
-
-
-/* --------------------------------------------------------------------------
-   2-bis. LANDMARK EN FOND (symbole ville dans la carte détails)
--------------------------------------------------------------------------- */
-
-function normalizeCityKey(s) {
-  try {
-    return String(s || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/\s+/g, " ");
-  } catch (_) {
-    return String(s || "").trim().toLowerCase();
-  }
-}
-
-function getLandmarkForCity(ci) {
-  const name = normalizeCityKey(ci?.name || "");
-  const country = normalizeCityKey(ci?.country || "");
-
-  const map = {
-    "paris": "🗼",
-    "london": "🎡",
-    "rome": "🏛️",
-    "naples": "🌋",
-    "new york": "🗽",
-    "san francisco": "🌉",
-    "los angeles": "🎬",
-    "chicago": "🏙️",
-    "miami": "🌴",
-    "barcelona": "⛪",
-    "madrid": "🏰",
-    "lisbon": "⛵",
-    "berlin": "🐻",
-    "amsterdam": "🚲",
-    "brussels": "🧇",
-    "geneva": "⛲",
-    "zurich": "🏔️",
-    "tokyo": "🗼",
-    "osaka": "🏯",
-    "kyoto": "⛩️",
-    "sydney": "🦘",
-    "melbourne": "🎭",
-    "dubai": "🏙️",
-    "singapore": "🦁",
-    "montreal": "🍁",
-    "quebec": "⚜️"
-  };
-
-  if (map[name]) return map[name];
-
-  // fallback simple par pays (optionnel)
-  if (country === "france") return "🗼";
-  if (country === "italy") return "🏛️";
-  if (country === "united states" || country === "usa") return "🏙️";
-  if (country === "united kingdom") return "🎡";
-
-  return "🏙️";
-}
-
-function setCityLandmark(ci) {
-  if (!cityLandmarkBg) return;
-  if (!ci || !ci.name) {
-    cityLandmarkBg.textContent = "";
-    return;
-  }
-  cityLandmarkBg.textContent = getLandmarkForCity(ci);
 }
 
 /* --------------------------------------------------------------------------
@@ -691,19 +619,24 @@ function setGeolocateSuccess(cityName) {
 
 
 function setGeolocateError(message) {
-   if (hasValidLocation) return; // ✅ BLOQUE LE TOAST ROUGE
+  // ❌ INTERDIT au démarrage
+  if (!btnGeolocate || !btnGeolocate.classList.contains("location-loading")) {
+    return;
+  }
+
   showToast(message || "Impossible de déterminer votre position.", "error");
   setGeolocateIdle();
 }
 
 async function geolocateByIp() {
-if (hasValidLocation) return; // 🔒
+  if (hasValidLocation) return;
+
   try {
     const r = await fetch("https://ipapi.co/json/");
     const j = await r.json();
+
     if (!j || !j.city || !j.latitude || !j.longitude) {
-      setGeolocateError("Impossible de récupérer votre position approximative.");
-      return;
+      return; // ⛔ PAS de toast rouge ici
     }
 
     const lat = j.latitude;
@@ -717,20 +650,15 @@ if (hasValidLocation) return; // 🔒
       isCurrentLocation: true,
     });
 
-    hideToast(); // ✅ efface tout message d’erreur précédent
+    setGeolocateSuccess(j.city); // 🟢 SEUL toast visible
 
-    suggestNearbyCity(lat, lon); // ✅ maintenant OK
+  } catch (err) {
+    console.error("Erreur géoloc IP", err);
 
-    setGeolocateSuccess(j.city);
-  } 
-   catch (err) {
-     console.error("Erreur géoloc IP", err);
-      if (!hasValidLocation) {
-        setGeolocateError("Impossible de déterminer votre position.");
-   }
- }
+    // 🔴 erreur finale UNIQUEMENT ici
+    setGeolocateError("Impossible de déterminer votre position.");
+  }
 }
-
 
 
 if (btnGeolocate) {
@@ -792,9 +720,13 @@ async function onGeoSuccess(position) {
 }
 
 function onGeoError(err) {
-  console.warn("Geo error:", err);
+  console.warn("Géolocalisation navigateur refusée:", err);
+
   if (hasValidLocation) return;
-  geolocateByIp(); // ⬅️ on bascule DIRECT vers IP
+
+  // ⛔ AUCUN toast rouge ici
+  // ✅ on bascule silencieusement vers l’IP
+  geolocateByIp();
 }
 
 /* --------------------------------------------------------------------------
@@ -855,7 +787,6 @@ function removeCity(idx) {
     if (windLineSub) windLineSub.textContent = "Rafales : —";
     forecastList.innerHTML = "";
     applyWeatherBackground(null);
-    setCityLandmark(null);
     updateTip(null);
   }
 }
@@ -889,14 +820,12 @@ if (btnReset) {
 function renderCityList() {
   if (!cityList) return;
 
-  // 🔒 mémoriser la ville sélectionnée AVANT tri
   const currentSelected = selectedCity;
-
   cityList.innerHTML = "";
 
-  if (sortSelect && sortSelect.value === "alpha") {
+  if (sortSelect?.value === "alpha") {
     cities.sort((a, b) => a.name.localeCompare(b.name));
-  } else if (sortSelect && sortSelect.value === "temp") {
+  } else if (sortSelect?.value === "temp") {
     cities.sort((a, b) => {
       const Ta = weatherCache[a.name]?.current?.temperature_2m ?? -9999;
       const Tb = weatherCache[b.name]?.current?.temperature_2m ?? -9999;
@@ -904,7 +833,6 @@ function renderCityList() {
     });
   }
 
-  // 🔒 restaurer la sélection APRÈS tri
   selectedCity = currentSelected;
 
   cities.forEach((ci, idx) => {
@@ -912,27 +840,26 @@ function renderCityList() {
     el.className = "city-item";
     el.dataset.index = idx;
 
-    // ✅ ville active UNIQUE
     if (selectedCity && isSameCity(ci, selectedCity)) {
       el.classList.add("city-item-active");
     }
 
-    const tempVal = weatherCache[ci.name]?.current?.temperature_2m ?? "—";
-    const badge = ci.isCurrentLocation
-      ? '<span class="city-badge-location">Ma position</span>'
-      : "";
+    const tempVal = weatherCache[ci.name]?.current?.temperature_2m;
 
     el.innerHTML = `
       <div class="city-main">
         <span class="city-name">${ci.name}</span>
-        <span class="city-meta">${ci.country} • ${ci.lat.toFixed(
-          2
-        )}, ${ci.lon.toFixed(2)}</span>
+        <span class="city-meta">${ci.country}</span>
       </div>
-      <span class="city-temp">${tempVal}°</span>
-      ${badge}
+      <span class="city-temp">${tempVal ?? "—"}°</span>
+      ${ci.isCurrentLocation ? `<span class="city-badge-location">Ma position</span>` : ""}
       <button class="city-remove">✕</button>
     `;
+
+    const tempSpan = el.querySelector(".city-temp");
+    if (tempSpan && typeof tempVal === "number") {
+      tempSpan.style.color = getTempColor(tempVal);
+    }
 
     el.addEventListener("click", (e) => {
       if (e.target.classList.contains("city-remove")) {
@@ -948,6 +875,7 @@ function renderCityList() {
 
   updateAddCityButtonVisibility();
 }
+
 
 function highlightCity(index) {
   if (!cityList) return;
@@ -988,8 +916,6 @@ async function loadCityWeather(ci) {
   detailsTitle.textContent = ci.name;
   detailsSubtitle.textContent = `Lat ${ci.lat.toFixed(2)}, Lon ${ci.lon.toFixed(2)}`;
 
-  setCityLandmark(selectedCity);
-
   try {
     const url =
       "https://api.open-meteo.com/v1/forecast" +
@@ -1004,35 +930,21 @@ async function loadCityWeather(ci) {
     if (!r.ok) throw new Error("Open-Meteo KO");
     const j = await r.json();
 
-    /* =========================
-       📦 SOURCE UNIQUE DE DONNÉES
-    ========================= */
-    lastForecastData = j;
-
-    /* =========================
-       ☀️ LEVER / COUCHER
-    ========================= */
+    /* ☀️ Lever / coucher */
     if (j.daily?.sunrise && j.daily?.sunset) {
       ci.sunrise = j.daily.sunrise[0];
       ci.sunset  = j.daily.sunset[0];
-
       citySunriseHour = getHourFromLocalISO(ci.sunrise);
       citySunsetHour  = getHourFromLocalISO(ci.sunset);
     } else {
-      ci.sunrise = null;
-      ci.sunset  = null;
-      citySunriseHour = null;
-      citySunsetHour  = null;
+      ci.sunrise = ci.sunset = null;
+      citySunriseHour = citySunsetHour = null;
     }
 
-    /* =========================
-       📦 CACHE MÉTÉO
-    ========================= */
+    /* 📦 Cache */
     weatherCache[ci.name] = j;
 
-    /* =========================
-       🌦️ RENDUS PRINCIPAUX
-    ========================= */
+    /* 🌦️ Rendus */
     renderTimeline24h(j);
     renderCurrent(j);
     renderWind(j);
@@ -1042,26 +954,17 @@ async function loadCityWeather(ci) {
     renderCityList();
     updateTip(j);
 
-    /* =========================
-       ⏰ HEURE LOCALE + THÈME
-    ========================= */
+    /* ⏰ Heure locale + thème */
     ci.utcOffset = j.utc_offset_seconds;
     updateCityClockFromOffset(j.utc_offset_seconds);
-
-    // 🌗 Thème AUTO / JOUR / NUIT
     applyThemeMode();
 
-    /* =========================
-       ☀️ SOLEIL
-    ========================= */
+    /* ☀️ Soleil */
     updateSunArc(ci);
     startSunArcLoop();
 
-    /* =========================
-       🌗 BACKGROUND ÉVOLUTIF
-    ========================= */
+    /* 🌗 Background dynamique */
     applyDynamicBackground(ci, j.current.weather_code);
-
     if (dynamicBgTimer) clearInterval(dynamicBgTimer);
     dynamicBgTimer = setInterval(() => {
       if (selectedCity && weatherCache[selectedCity.name]) {
@@ -1072,16 +975,17 @@ async function loadCityWeather(ci) {
       }
     }, 60000);
 
-    /* =========================
-       📆 PRÉVISIONS 7 / 14 JOURS
-    ========================= */
-    updateForecastButtonsActiveState(7);
-    renderForecast(j, 7);
+    /* 📆 PRÉVISIONS — SOURCE UNIQUE */
+    lastForecastData = j;
+    enableForecastButtons();             // ✅ activation UNIQUE
+    updateForecastButtonsActiveState(7); // UI
+    renderForecast(lastForecastData, 7); // rendu initial
 
   } catch (err) {
     console.error("Erreur météo", err);
   }
 }
+
 
 /* --------------------------------------------------------------------------
    10. AFFICHAGE METEO ACTUELLE
@@ -1089,16 +993,19 @@ async function loadCityWeather(ci) {
 
 
 function renderCurrent(j) {
-  if (!detailsCurrent) return;
+  if (!detailsCurrent || !j?.current) return;
+
   const c = j.current;
 
   const pluieTotal = (c.rain ?? 0) + (c.showers ?? 0);
-  const pluieDisplay = pluieTotal > 0 ? pluieTotal.toFixed(1) : (c.precipitation ?? 0);
+  const pluieDisplay = pluieTotal > 0
+    ? pluieTotal.toFixed(1)
+    : (c.precipitation ?? 0);
 
   detailsCurrent.innerHTML = `
     <div class="detail-block">
       <div class="detail-label">Température</div>
-      <div class="detail-value">${c.temperature_2m}°C</div>
+      <div class="detail-value temp-main">${c.temperature_2m}°C</div>
       <div class="detail-sub">Ressenti : ${c.temperature_2m}°C</div>
     </div>
 
@@ -1117,68 +1024,51 @@ function renderCurrent(j) {
     <div class="detail-block">
       <div class="detail-label">Neige</div>
       <div class="detail-value">${c.snowfall} mm</div>
-      <div class="detail-sub">Averse : ${c.showers} mm</div>
+      <div class="detail-sub">Averses : ${c.showers} mm</div>
     </div>
   `;
 
-  const sr = j.daily.sunrise ? j.daily.sunrise[0].substring(11,16) : "";
-  const ss = j.daily.sunset ? j.daily.sunset[0].substring(11,16) : "";
-  const el_sr = document.getElementById("sunrise-time");
-  const el_ss = document.getElementById("sunset-time");
-  if (el_sr) el_sr.textContent = sr;
-  if (el_ss) el_ss.textContent = ss;
+  const tempEl = detailsCurrent.querySelector(".temp-main");
+  if (tempEl) {
+    tempEl.style.color = getTempColor(c.temperature_2m);
+  }
 
-  // v6.7 (H) — micro animation des valeurs
-  try {
-    const values = detailsCurrent.querySelectorAll(".detail-value");
-    values.forEach((v) => {
-      v.classList.remove("value-animate");
-      // relance propre de l'animation
-      void v.offsetWidth;
-      v.classList.add("value-animate");
-      v.addEventListener(
-        "animationend",
-        () => v.classList.remove("value-animate"),
-        { once: true }
-      );
-    });
-  } catch (e) {}
+  // Lever / coucher
+  if (j.daily?.sunrise?.[0]) {
+    sunriseTime.textContent = j.daily.sunrise[0].substring(11,16);
+  }
+  if (j.daily?.sunset?.[0]) {
+    sunsetTime.textContent = j.daily.sunset[0].substring(11,16);
+  }
 }
-
 
 /* --------------------------------------------------------------------------
    11. Boussole du vent
 -------------------------------------------------------------------------- */
 
 function renderWind(j) {
-  if (!windArrow || !j?.current) return;
+  const windCompass = document.getElementById("wind-compass");
+  if (!windCompass || !j?.current) return;
+
+  const windArrow = windCompass.querySelector(".compass-arrow");
+  if (!windArrow) return;
 
   const c = j.current;
-  const rawDir = typeof c.wind_direction_10m === "number" ? c.wind_direction_10m : null;
-  const speed = typeof c.wind_speed_10m === "number" ? c.wind_speed_10m : null;
-  const gust  = typeof c.wind_gusts_10m === "number" ? c.wind_gusts_10m : null;
+  const dir = c.wind_direction_10m ?? 0;
+  const speed = c.wind_speed_10m ?? 0;
+  const gust = c.wind_gusts_10m ?? 0;
 
-  // Arrow: si ton pictogramme pointe "vers le haut" par défaut (Nord),
-  // alors rawDir correspond à la direction D'OU vient le vent (standard météo).
-  const visualDir = rawDir == null ? 0 : (rawDir + 180) % 360;
+  windArrow.style.transform =
+    `translate(-50%, -50%) rotate(${(dir + 180) % 360}deg)`;
 
-  // ✅ rotation cohérente (utilise visualDir)
-  const ARROW_OFFSET_DEG = 0; // teste 10, -10, 15, -15…
-   windArrow.style.transform =
-  `translate(-50%, -50%) rotate(${visualDir + ARROW_OFFSET_DEG}deg)`;
-
-  // ✅ texte cohérent (utilise rawDir)
   if (windLineMain) {
-    const dirLabel = rawDir == null ? "—" : degreeToCardinal(rawDir);
-    const sp = speed == null ? "—" : (Math.round(speed * 10) / 10);
-    windLineMain.textContent = `Vent : ${dirLabel} (${sp} km/h)`;
+    windLineMain.textContent = `Vent : ${degreeToCardinal(dir)} (${speed} km/h)`;
   }
-
   if (windLineSub) {
-    const gs = gust == null ? "—" : (Math.round(gust * 10) / 10);
-    windLineSub.textContent = `Rafales : ${gs} km/h`;
+    windLineSub.textContent = `Rafales : ${gust} km/h`;
   }
 }
+
 
 /* --------------------------------------------------------------------------
    13. PRÉVISIONS 7 & 14 jours
@@ -1186,32 +1076,26 @@ function renderWind(j) {
 
 if (btnForecast7) {
   btnForecast7.addEventListener("click", () => {
+    if (!lastForecastData) return;
     updateForecastButtonsActiveState(7);
-    if (selectedCity) {
-        renderForecast(weatherCache[selectedCity.name], 7);
-        activateForecastClicks();
-    }
-});
+    renderForecast(lastForecastData, 7);
+  });
 }
 
 if (btnForecast14) {
   btnForecast14.addEventListener("click", () => {
+    if (!lastForecastData) return;
     updateForecastButtonsActiveState(14);
-    if (selectedCity) {
-        renderForecast(weatherCache[selectedCity.name], 14);
-        activateForecastClicks();
-    }
-});
+    renderForecast(lastForecastData, 14);
+  });
 }
-
 
 if (btn24h) {
   btn24h.addEventListener("click", (e) => {
     if (!lastForecastData || !selectedCity) return;
 
-    // ✅ Clic normal : ouvre le popup "Prochaines 24 h" (graphiques)
-    // 💡 Shift+clic : garde l'ancien comportement (afficher/masquer la timeline 24h sous le titre)
-    if (e && e.shiftKey && timeline24h) {
+    // Shift + clic = timeline inline
+    if (e.shiftKey && timeline24h) {
       timeline24h.classList.toggle("hidden");
       if (!timeline24h.classList.contains("hidden")) {
         renderTimeline24h(lastForecastData);
@@ -1219,6 +1103,7 @@ if (btn24h) {
       return;
     }
 
+    // clic normal = overlay 24h
     open24hOverlay();
   });
 }
@@ -1315,46 +1200,42 @@ function formatForecastDate(dateStr) {
   });
 }
 
-function renderForecast(_, days) {
-  if (!forecastList || !lastForecastData?.daily) return;
+function renderForecast(data, days) {
+  if (!forecastList || !data?.daily) return;
 
-  const d = lastForecastData.daily;
+  const d = data.daily;
   forecastList.innerHTML = "";
 
   const count = Math.min(days, d.time.length);
 
   for (let i = 0; i < count; i++) {
-    const dateISO = d.time[i];
-
     const div = document.createElement("div");
     div.className = "forecast-item";
     div.dataset.dayIndex = i;
 
     div.innerHTML = `
-      <div class="forecast-day">${formatForecastDate(dateISO)}</div>
-
+      <div class="forecast-day">${formatForecastDate(d.time[i])}</div>
       <div class="forecast-icon" data-label="${getWeatherLabel(d.weather_code[i])}">
         ${getWeatherIcon(d.weather_code[i])}
       </div>
-
       <div class="forecast-temps">
         <span class="max">${Math.round(d.temperature_2m_max[i])}°</span>
         <span class="min">${Math.round(d.temperature_2m_min[i])}°</span>
       </div>
-
-      <div class="forecast-rain">
-        ${d.precipitation_sum[i] ?? 0} mm
-      </div>
-
-      <div class="forecast-wind">
-        ${Math.round(d.wind_speed_10m_max[i])} km/h
-      </div>
+      <div class="forecast-rain">${d.precipitation_sum[i] ?? 0} mm</div>
+      <div class="forecast-wind">${Math.round(d.wind_speed_10m_max[i])} km/h</div>
     `;
+
+    const maxEl = div.querySelector(".max");
+    const minEl = div.querySelector(".min");
+
+    if (maxEl) maxEl.style.color = getTempColor(d.temperature_2m_max[i]);
+    if (minEl) minEl.style.color = getTempColor(d.temperature_2m_min[i]);
 
     forecastList.appendChild(div);
   }
 
-  activateForecastClicks(); // 🔥 indispensable
+  activateForecastClicks();
 }
 
 function activateForecastClicks() {
@@ -1405,15 +1286,20 @@ function iconForWeatherCode(code) {
 }
 
 function updateForecastButtonsActiveState(active) {
-    if (active === 7) {
-        btnForecast7.classList.add("pill-button-active");
-        btnForecast14.classList.remove("pill-button-active");
-    } else if (active === 14) {
-        btnForecast14.classList.add("pill-button-active");
-        btnForecast7.classList.remove("pill-button-active");
-    }
+  if (!btnForecast7 || !btnForecast14) return;
+
+  btnForecast7.classList.toggle("pill-button-active", active === 7);
+  btnForecast14.classList.toggle("pill-button-active", active === 14);
 }
 
+function enableForecastButtons() {
+  [btn24h, btnForecast7, btnForecast14].forEach(btn => {
+    if (!btn) return;
+    btn.classList.remove("disabled");
+    btn.disabled = false;
+    btn.style.pointerEvents = "auto";
+  });
+}
 
 /* --------------------------------------------------------------------------
    14. DÉTAIL JOUR (graphiques température / pluie / vent)
@@ -1560,7 +1446,12 @@ if (forecastList) {
 
 
 function drawSimpleLineChart(canvas, labels, values, unit) {
-  if (!canvas || !canvas.getContext || !labels.length || !values.length) {
+   if (unit === "°C") {
+   color = getTempColor(
+    values[Math.floor(values.length / 2)] // temp médiane
+   );
+   }
+   if (!canvas || !canvas.getContext || !labels.length || !values.length) {
     const ctx = canvas && canvas.getContext && canvas.getContext("2d");
     if (ctx) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2467,7 +2358,7 @@ if (btnRadar && radarOverlay) {
 }
 
 if (btnCloseRadar) {
-  btnCloseRadar.addEventListener("click", () => {
+  const closeRadar = () => {
     radarOverlay.classList.remove("active");
     radarOverlay.classList.add("hidden");
     document.body.classList.remove("no-scroll");
@@ -2477,6 +2368,15 @@ if (btnCloseRadar) {
       radarMapInstance.removeLayer(radarFutureOverlay);
       radarFutureOverlay = null;
     }
+  };
+
+  // 🖱️ Desktop
+  btnCloseRadar.addEventListener("click", closeRadar);
+
+  // 📱 iOS (Safari + Chrome)
+  btnCloseRadar.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    closeRadar();
   });
 }
 
@@ -2536,56 +2436,28 @@ if (radarSummaryButton) {
 /* --------------------------------------------------------------------------
    17. INITIALISATION
 -------------------------------------------------------------------------- */
-async function onGeoSuccess(position) {
-  const lat = position.coords.latitude;
-  const lon = position.coords.longitude;
-
-  try {
-    const url = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=fr`;
-    const r = await fetch(url);
-    const j = await r.json();
-    const info = j?.results?.[0];
-
-    const cityName =
-      info?.name || `Position (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
-    const countryName = info?.country || "—";
-
-    addCity({
-      name: cityName,
-      country: countryName,
-      lat,
-      lon,
-      isCurrentLocation: true,
-    });
-
-    hideToast(); // nettoie tout message précédent
-    setGeolocateSuccess(cityName);
-
-  } catch (err) {
-    console.error("Erreur géocodage inverse", err);
-    geolocateByIp(); // fallback IP propre
-  }
-}
-
-function onGeoError(err) {
-  console.warn("Erreur géolocalisation navigateur", err);
-  geolocateByIp(); // fallback IP
-}
 
 function init() {
-  loadSavedCities();
-
-  // 🔁 Charger la météo de toutes les villes sauvegardées
-  if (Array.isArray(cities) && cities.length > 0) {
-    cities.forEach(ci => {
-      loadCityWeather(ci);
-    });
-  }
+  // ⛔ désactiver les boutons AVANT tout chargement
+  [btn24h, btnForecast7, btnForecast14].forEach(btn => {
+    if (!btn) return;
+    btn.classList.add("disabled");
+    btn.disabled = true;
+    btn.style.pointerEvents = "none";
+  });
 
   // 🎨 Thème sauvegardé
   const savedTheme = localStorage.getItem("themeMode");
   if (savedTheme === "day" || savedTheme === "night" || savedTheme === "auto") {
     themeMode = savedTheme;
+  }
+
+  // 📦 villes sauvegardées
+  loadSavedCities();
+
+  // 🌍 charger la météo (UNE seule ville)
+  if (Array.isArray(cities) && cities.length > 0) {
+    loadCityWeather(cities[0]);
   }
 }
 
@@ -3111,11 +2983,7 @@ function startSunArcLoop() {
     }
   }, 60 * 1000);
 }
-if (btn24h && timeline24h) {
-  btn24h.addEventListener("click", () => {
-    timeline24h.classList.toggle("hidden");
-  });
-}
+
 /* === PATCH Background évolutif — logique jour/nuit === */
 function clamp01(x){return Math.max(0,Math.min(1,x));}
 
