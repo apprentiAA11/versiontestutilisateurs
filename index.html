@@ -141,10 +141,13 @@
 <section class="card glass-card details-card">
 <header class="card-header">
 <div>
-<h2 id="details-title">Aucune ville sélectionnée</h2>
+<h2 id="details-title">Aucune ville selectionnée</h2>
+<div id="last-update" class="last-update hidden"></div>
+
 <p class="card-subtitle" id="details-subtitle">Ajoute une ville ou ta position</p>
 </div>
 <button class="ghost-button history-button" id="btn-24h">🕒 Prévisions 24h</button>
+<button class="ghost-button history-button" id="btn-forecast-popup">📅 Prévisions 7/14j</button>
 <button class="ghost-button history-button" id="btn-history">📜 Historique</button>
 </header>
 <div class="timeline-24h hidden" id="timeline-24h"></div>
@@ -224,19 +227,6 @@
 
 </div>
 </section>
-<section class="card glass-card forecast-card">
-<header class="card-header">
-<div>
-<h2>Prévisions</h2>
-<p class="card-subtitle">Résumé des jours à venir</p>
-</div>
-<div class="forecast-toggle">
-<button class="pill-button pill-button-active" id="btn-forecast-7">7 jours</button>
-<button class="pill-button" id="btn-forecast-14">14 jours</button>
-</div>
-</header>
-<div class="forecast-list" id="forecast-list"></div>
-</section>
 </section>
 <!-- Colonne droite -->
 <section class="column-right">
@@ -282,6 +272,25 @@
 <div id="add-city-popup-slot"></div>
 </div>
 </div>
+
+<!-- ================= POPUP PRÉVISIONS ================= -->
+<div class="day-overlay" id="forecast-overlay">
+  <div class="overlay-backdrop"></div>
+  <div class="day-popup glass-card">
+    <header class="popup-header">
+      <h2>Prévisions</h2>
+      <button class="icon-button close-popup" id="btn-close-forecast">✕</button>
+    </header>
+
+    <div class="forecast-toggle" style="margin-bottom:12px">
+      <button class="pill-button pill-button-active" id="btn-forecast-7">7 jours</button>
+      <button class="pill-button" id="btn-forecast-14">14 jours</button>
+    </div>
+
+    <div class="forecast-list" id="forecast-list"></div>
+  </div>
+</div>
+
 <footer class="app-footer">
 <p>Météo Splash · Bright Splash Studio · Données : <a href="https://open-meteo.com">Open-Meteo</a></p>
 </footer>
