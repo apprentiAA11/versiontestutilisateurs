@@ -741,30 +741,38 @@ function addCity(ci) {
       Math.abs(x.lon - ci.lon) < 0.01
   );
 
+  // ===== Ville déjà présente =====
   if (existingIndex !== -1) {
     if (ci.isCurrentLocation) {
-      cities.forEach((c) => {
-        c.isCurrentLocation = false;
-      });
+      cities.forEach((c) => (c.isCurrentLocation = false));
       cities[existingIndex].isCurrentLocation = true;
       saveCities();
       renderCityList();
       highlightCity(existingIndex);
     }
+
+    // 🔹 précharge température (liste "Mes villes")
+    fetchCityTemp(cities[existingIndex]);
+
+    // 🔹 charge météo complète (sélection utilisateur)
     loadCityWeather(cities[existingIndex]);
     return;
   }
 
+  // ===== Nouvelle ville =====
   if (ci.isCurrentLocation) {
-    cities.forEach((c) => {
-      c.isCurrentLocation = false;
-    });
+    cities.forEach((c) => (c.isCurrentLocation = false));
   }
 
   cities.push(ci);
   saveCities();
   renderCityList();
-  loadCityWeather(ci);
+
+  // 🔹 IMPORTANT : précharge UNIQUEMENT la température
+  fetchCityTemp(ci);
+
+  // 🔹 NE PAS appeler loadCityWeather ici
+  // la ville ne devient active que si l'utilisateur clique
 
   if (ci.isCurrentLocation) {
     const idx = cities.length - 1;
@@ -800,6 +808,11 @@ function loadSavedCities() {
   if (raw) {
     cities = JSON.parse(raw);
     renderCityList();
+
+    // 🔹 NOUVEAU : précharger la température de chaque ville
+    cities.forEach((ci) => {
+      fetchCityTemp(ci);
+    });
   }
   updateAddCityButtonVisibility();
 }
@@ -2516,6 +2529,30 @@ async function fetchHistoricalWeather(ci, dateStr) {
   } catch (err) {
     console.error("Erreur historique", err);
     return null;
+  }
+}
+async function fetchCityTemp(ci) {
+  try {
+    const url =
+      "https://api.open-meteo.com/v1/forecast" +
+      `?latitude=${ci.lat}&longitude=${ci.lon}` +
+      "&current=temperature_2m,weather_code" +
+      "&timezone=auto";
+
+    const r = await fetch(url);
+    if (!r.ok) return;
+
+    const j = await r.json();
+
+    // on met à jour le cache sans toucher à la ville sélectionnée
+    weatherCache[ci.name] = {
+      ...(weatherCache[ci.name] || {}),
+      current: j.current,
+    };
+
+    renderCityList(); // 🔁 refresh visuel
+  } catch (e) {
+    console.warn("Temp non chargée pour", ci.name);
   }
 }
 
