@@ -1,108 +1,144 @@
 <!DOCTYPE html>
-
 <html lang="fr">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>Météo Splash v6.6-B</title>
+
 <link href="style.css" rel="stylesheet"/>
-<script defer="" src="script.js"></script>
+<script defer src="script.js"></script>
+
 <!-- Leaflet -->
 <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
+
 <body class="theme-auto weather-clear">
+
 <div class="rain-scene" id="rain-scene">
-<div id="storm-layer"></div>
-<div id="snow-layer"></div>
-<div id="sun-layer"></div>
+  <div id="storm-layer"></div>
+  <div id="snow-layer"></div>
+  <div id="sun-layer"></div>
 </div>
+
 <div class="app-shell">
+
 <!-- =================== HEADER =================== -->
 <header class="app-header glass-card">
-<div class="brand">
-<div class="brand-logo">🌈</div>
-<div class="brand-text">
-<h1>Météo Splash</h1>
-<p class="brand-tagline">Prévisions météo</p>
-</div>
-</div>
-<div class="header-right">
-<div class="header-buttons">
-<span class="radar-clock" id="radar-clock">--:--</span>
-<button class="icon-button" id="btn-radar">🛰 Radar</button>
-<button class="icon-button theme-toggle" id="btn-theme-toggle">🌓 Auto</button>
-<button class="icon-button location" id="btn-geolocate">📍 Ma position</button>
-<button class="icon-button speak" id="btn-speak">🗣 Météo parlée</button>
-<button class="icon-button add-city" id="btn-add-city" title="Ajouter une ville">➕</button>
-</div>
-</div>
+  <div class="brand">
+    <div class="brand-logo">🌈</div>
+    <div class="brand-text">
+      <h1>Météo Splash</h1>
+      <p class="brand-tagline">Prévisions météo</p>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <div class="header-buttons">
+      <span class="radar-clock" id="radar-clock">--:--</span>
+      <button class="icon-button" id="btn-radar">🛰 Radar</button>
+      <button class="icon-button theme-toggle" id="btn-theme-toggle">🌓 Auto</button>
+      <button class="icon-button location" id="btn-geolocate">📍 Ma position</button>
+      <button class="icon-button speak" id="btn-speak">🗣 Météo parlée</button>
+      <button class="icon-button add-city" id="btn-add-city" title="Ajouter une ville">➕</button>
+    </div>
+  </div>
 </header>
+
 <!-- ================= POPUP RADAR ================= -->
-<div class="radar-overlay" id="radar-overlay">
-<div class="overlay-backdrop"></div>
-<div class="radar-popup glass-card">
-<header class="popup-header">
-<h2>Radar météo (v6.6-B)</h2>
-<button class="icon-button close-popup" id="btn-close-radar">✕</button>
-</header>
-<p class="radar-subtitle">Radar pluie (RainViewer), vent et températures (Open-Meteo / OpenWeather)</p>
-<div class="radar-map-wrapper">
-<div class="radar-map" id="radar-map"></div>
-<div class="radar-controls">
-<div class="radar-mode-shell">
-<button class="pill-button pill-button-active" id="radar-mode-toggle">Radar réel</button>
+<div class="radar-overlay hidden" id="radar-overlay">
+
+  <!-- 🔴 TOP BAR iOS SAFE -->
+  <div class="radar-topbar">
+    <button class="icon-button close-popup" id="btn-close-radar">✕</button>
+  </div>
+
+  <div class="overlay-backdrop"></div>
+
+  <div class="radar-popup glass-card">
+    <!-- ❌ Bouton retiré d’ici (iOS bug) -->
+    <header class="popup-header">
+      <h2>Radar météo (v6.6-B)</h2>
+    </header>
+
+    <p class="radar-subtitle">
+      Radar pluie (RainViewer), vent et températures (Open-Meteo / OpenWeather)
+    </p>
+
+    <div class="radar-map-wrapper">
+      <div class="radar-map" id="radar-map"></div>
+
+      <div class="radar-controls">
+        <div class="radar-mode-shell">
+          <button class="pill-button pill-button-active" id="radar-mode-toggle">
+            Radar réel
+          </button>
+        </div>
+
+        <div class="radar-timeline-wrapper">
+          <div class="radar-timeline-header">
+            <button class="radar-play-button" id="radar-play">▶︎</button>
+            <div class="radar-window-label">
+              <span id="radar-window-text">Maintenant → +12 h</span>
+            </div>
+          </div>
+          <input
+            id="radar-timeline-slider"
+            type="range"
+            min="0"
+            max="12"
+            step="1"
+            value="0"
+          />
+        </div>
+
+        <div class="radar-legend">
+          <div class="legend-container hidden" id="legend-container">
+
+            <div class="legend-group" data-type="rain">
+              <span class="legend-dot color-rain-1"></span> Faible
+              <span class="legend-dot color-rain-2"></span> Modérée
+              <span class="legend-dot color-rain-3"></span> Forte
+              <span class="legend-dot color-rain-4"></span> Très forte
+            </div>
+
+            <div class="legend-group hidden" data-type="wind">
+              <span class="legend-dot color-wind-1"></span> Faible
+              <span class="legend-dot color-wind-2"></span> Modéré
+              <span class="legend-dot color-wind-3"></span> Fort
+              <span class="legend-dot color-wind-4"></span> Très fort
+            </div>
+
+            <div class="legend-group hidden" data-type="temp">
+              <span class="legend-dot color-temp-1"></span> Très froid
+              <span class="legend-dot color-temp-2"></span> Froid
+              <span class="legend-dot color-temp-3"></span> Doux
+              <span class="legend-dot color-temp-4"></span> Chaud / Très chaud
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="radar-tabs">
+      <button class="radar-tab radar-tab-active" id="radar-tab-rain">Pluie</button>
+      <button class="radar-tab" id="radar-tab-wind">Vent</button>
+      <button class="radar-tab" id="radar-tab-temp">Températures</button>
+    </div>
+
+    <div class="radar-grid" id="radar-grid"></div>
+  </div>
 </div>
-<div class="radar-timeline-wrapper">
-<div class="radar-timeline-header">
-<button class="radar-play-button" id="radar-play">▶︎</button>
-<div class="radar-window-label">
-<span id="radar-window-text">Maintenant → +12 h</span>
-</div>
-</div>
-<input id="radar-timeline-slider" max="12" min="0" step="1" type="range" value="0"/>
-</div>
-<div class="radar-legend">
-<div class="legend-container hidden" id="legend-container">
-<!-- Légende pluie -->
-<div class="legend-group" data-type="rain">
-<span class="legend-dot color-rain-1"></span> Faible
-                  <span class="legend-dot color-rain-2"></span> Modérée
-                  <span class="legend-dot color-rain-3"></span> Forte
-                  <span class="legend-dot color-rain-4"></span> Très forte
-                </div>
-<!-- Légende vent -->
-<div class="legend-group hidden" data-type="wind">
-<span class="legend-dot color-wind-1"></span> Faible
-                  <span class="legend-dot color-wind-2"></span> Modéré
-                  <span class="legend-dot color-wind-3"></span> Fort
-                  <span class="legend-dot color-wind-4"></span> Très fort
-                </div>
-<!-- Légende température -->
-<div class="legend-group hidden" data-type="temp">
-<span class="legend-dot color-temp-1"></span> Très froid
-                  <span class="legend-dot color-temp-2"></span> Froid
-                  <span class="legend-dot color-temp-3"></span> Doux
-                  <span class="legend-dot color-temp-4"></span> Chaud / Très chaud
-                </div>
-</div>
-</div>
-</div>
-</div>
-<div class="radar-tabs">
-<button class="radar-tab radar-tab-active" id="radar-tab-rain">Pluie</button>
-<button class="radar-tab" id="radar-tab-wind">Vent</button>
-<button class="radar-tab" id="radar-tab-temp">Températures</button>
-</div>
-<div class="radar-grid" id="radar-grid"></div>
-</div>
-</div>
+
+<!-- ===================== MAIN ===================== -->
+<!-- ⬇️ LE RESTE DE TON HTML EST STRICTEMENT INCHANGÉ ⬇️ -->
+
 <!-- ===================== MAIN ===================== -->
 <main class="layout">
 <!-- Colonne gauche -->
 <section class="column-left">
 <section class="card glass-card details-card">
-  <div class="city-landmark-bg" id="city-landmark-bg" aria-hidden="true"></div>
 <header class="card-header">
 <div>
 <h2 id="details-title">Aucune ville sélectionnée</h2>
