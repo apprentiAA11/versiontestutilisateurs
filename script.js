@@ -1035,10 +1035,10 @@ function renderCurrent(j) {
 
   // Lever / coucher
   if (j.daily?.sunrise?.[0]) {
-    sunriseTime.textContent = j.daily.sunrise[0].substring(11,16);
+    if (sunriseTime) sunriseTime.textContent = j.daily.sunrise[0].substring(11,16);
   }
   if (j.daily?.sunset?.[0]) {
-    sunsetTime.textContent = j.daily.sunset[0].substring(11,16);
+    if (sunsetTime) sunsetTime.textContent = j.daily.sunset[0].substring(11,16);
   }
 }
 
@@ -1557,10 +1557,14 @@ function drawSimpleLineChart(canvas, labels, values, unit) {
   }));
 
   // Couleur de courbe par type
-  let color = "#ff6f61"; // Température
-  if (unit === "mm") color = "#4a90e2";    // Pluie
-  if (unit === "km/h") color = "#34c759";  // Vent
-  if (unit === "%") color = "#af52de";     // Humidité
+  let lineColor = "#ff6f61"; // Température
+  if (unit === "°C") {
+    const mid = values[Math.floor(values.length / 2)];
+    lineColor = getTempColor(mid);
+  }
+  if (unit === "mm") lineColor = "#4a90e2";    // Pluie
+  if (unit === "km/h") lineColor = "#34c759";  // Vent
+  if (unit === "%") lineColor = "#af52de";     // Humidité
 
   // ======= FONCTION DE DESSIN STATIQUE (axes + grille + labels) =======
   function drawStaticFrame() {
@@ -1685,9 +1689,9 @@ function drawSimpleLineChart(canvas, labels, values, unit) {
 
     // Glow léger
     ctx.lineWidth = 2.4;
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    ctx.shadowColor = color + "66";
+    ctx.strokeStyle = lineColor;
+    ctx.fillStyle = lineColor;
+    ctx.shadowColor = lineColor + "66";
     ctx.shadowBlur = 10;
 
     ctx.beginPath();
@@ -2985,7 +2989,6 @@ function startSunArcLoop() {
 }
 
 /* === PATCH Background évolutif — logique jour/nuit === */
-function clamp01(x){return Math.max(0,Math.min(1,x));}
 
 function getDayPhase(now,sunrise,sunset){
   if(now>=sunrise-0.75 && now<sunrise+0.75) return "dawn";
