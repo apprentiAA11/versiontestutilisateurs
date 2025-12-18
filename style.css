@@ -438,6 +438,17 @@ body.theme-night .detail-block {
   position: relative;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
 }
+.compass-circle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  background: cyan;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
 
 body.theme-night .compass-circle {
   background: radial-gradient(circle at 30% 20%, #2d3b8e, #050921);
@@ -481,8 +492,8 @@ body.theme-night .compass-circle {
   border-radius: 999px;
   top: 50%;
   left: 50%;
-  transform-origin: 50% 50%;
-  transform: translate(-50%, -50%) rotate(0deg);
+  transform-origin: 50% 80%;
+  transform: translate(-50%, calc(-50% + 2px)) rotate(0deg);
   box-shadow: 0 0 8px rgba(255, 120, 120, 0.7);
   transition: transform 0.3s ease-out;
 }
@@ -3311,85 +3322,323 @@ body.theme-night .weather-tooltip {
 .toast-error {
   background: linear-gradient(135deg, #ff6b6b, #d63031);
 }
+/* ==========================================================
+   📱 iPhone / Mobile
+   ========================================================== */
+@media (max-width: 768px) {
 
+  body {
+    font-size: 15px;
+  }
 
-/* ====================================================================== */
-/* CITY LANDMARK BG (dans la carte détails) */
-/* ====================================================================== */
-.details-card{position:relative; overflow:hidden;}
-.details-card > :not(.city-landmark-bg){position:relative; z-index:1;}
-.city-landmark-bg{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:flex-end;
-  justify-content:flex-end;
-  padding:10px 14px;
-  font-size:96px;
-  line-height:1;
-  opacity:0.12;
-  transform: translate(6px,10px);
-  pointer-events:none;
-  user-select:none;
-  filter: blur(0.2px);
-}
-body.theme-night .city-landmark-bg{opacity:0.10;}
-@media (max-width: 520px){
-  .city-landmark-bg{font-size:78px; padding:8px 12px; transform: translate(4px,8px);}
-}
+  .app-shell {
+    padding: 10px;
+  }
 
+  /* Header */
+  .app-header {
+    flex-direction: column;
+    gap: 10px;
+  }
 
-/* ====================================================================== */
-/* CITY LANDMARK BG (dans la carte détails) */
-/* ====================================================================== */
-.details-card{
-  position: relative;
-  overflow: hidden;
-}
-.details-card > :not(.city-landmark-bg){
-  position: relative;
-  z-index: 1;
-}
-.city-landmark-bg{
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding: 10px 14px;
-  font-size: 96px;
-  line-height: 1;
-  opacity: 0.12;
-  filter: saturate(0.9);
-  transform: translate(6px, 10px);
-  pointer-events: none;
-  user-select: none;
-  z-index: 0;
-}
-/* nuit : un peu plus discret */
-body.theme-night .city-landmark-bg{
-  opacity: 0.10;
-}
+  /* Boutons principaux */
+  button,
+  .pill-button {
+    min-height: 44px; /* Apple guideline */
+    font-size: 15px;
+  }
 
-@media (max-width: 520px){
-  .city-landmark-bg{
-    font-size: 78px;
-    padding: 8px 12px;
-    transform: translate(4px, 8px);
+  /* Cartes météo */
+  .weather-card,
+  .city-card,
+  .forecast-item {
+    padding: 12px 14px;
+    border-radius: 16px;
+  }
+
+  /* Mes villes */
+  .city-item {
+    padding: 10px 12px;
+  }
+
+  .city-name {
+    font-size: 15px;
+  }
+
+  .city-temp {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  /* Prévisions (ligne compacte mais lisible) */
+  .forecast-item {
+    grid-template-columns:
+      92px   /* jour */
+      30px   /* icône */
+      auto   /* températures */
+      52px   /* pluie */
+      60px;  /* vent */
+    column-gap: 8px;
+  }
+
+  .forecast-temps {
+    font-size: 14px;
+  }
+
+  /* Overlay 24h / jour */
+  .day-overlay {
+    padding: 12px;
+  }
+
+  /* Toast */
+  .toast {
+    width: calc(100% - 32px);
+    text-align: center;
+  }
+}
+/* ==========================================================
+   📲 iPad / Tablette
+   ========================================================== */
+@media (min-width: 769px) and (max-width: 1024px) {
+
+  body {
+    font-size: 16px;
+  }
+
+  .app-shell {
+    padding: 14px 18px;
+  }
+
+  /* Header plus aéré */
+  .app-header {
+    gap: 14px;
+  }
+
+  /* Prévisions */
+  .forecast-item {
+    grid-template-columns:
+      110px  /* jour */
+      34px   /* icône */
+      auto   /* températures */
+      70px   /* pluie */
+      80px;  /* vent */
+    column-gap: 12px;
+  }
+
+  .forecast-temps {
+    font-size: 15px;
+  }
+
+  /* Cartes */
+  .weather-card,
+  .city-card {
+    border-radius: 18px;
   }
 }
 
-/* ===============================
-   🧭 Boussole – Pointe de direction
-=============================== */
+/* ==========================================================
+   📱 RADAR iOS – FIX DÉFINITIF (Chrome & Safari)
+   ========================================================== */
 
+#radar-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  z-index: 10000;
+}
+
+/* Barre supérieure du radar */
+.radar-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+
+  height: calc(env(safe-area-inset-top, 0px) + 56px);
+  padding-top: env(safe-area-inset-top, 0px);
+
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.6),
+    rgba(0,0,0,0.0)
+  );
+
+  z-index: 10;
+  pointer-events: auto;
+}
+
+/* Bouton fermeture */
+.radar-topbar #btn-close-radar {
+  margin-right: 12px;
+
+  width: 44px;
+  height: 44px;
+
+  border-radius: 50%;
+  border: none;
+
+  font-size: 20px;
+  font-weight: 600;
+
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+/* Le radar (Leaflet/canvas) reste en dessous */
+#radar-overlay .leaflet-container,
+#radar-overlay canvas {
+  z-index: 1;
+}
+/* ⚠️ iOS : le backdrop ne doit jamais bloquer le bouton */
+.radar-overlay .overlay-backdrop {
+  pointer-events: none;
+}
+/* ===============================
+   🧭 BOUSSOLE – FLÈCHE VENT (FIX)
+================================ */
+
+.wind-compass {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.compass-circle {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+/* Axe central */
+/* ===============================
+   🧭 BOUSSOLE – FLÈCHE CENTRÉE
+================================ */
+
+.compass-arrow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+
+  /* longueur totale */
+  width: 4px;
+  height: 64px;
+
+  /* centrage réel */
+  transform: translate(-50%, -50%) rotate(0deg);
+  transform-origin: 50% 50%;
+
+  /* couleur & style */
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 0.15) 0%,
+    #ff4d4d 35%,
+    #ff4d4d 100%
+  );
+
+  border-radius: 3px;
+  z-index: 4;
+}
+
+/* 🔺 Pointe de flèche (devant) */
+.compass-arrow::after {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 14px solid #ff4d4d;
+}
+
+/* ⚫ Contrepoids (arrière) */
 .compass-arrow::before {
   content: "";
   position: absolute;
-  top: -6px;
+  bottom: -6px;
   left: 50%;
   transform: translateX(-50%);
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-bottom: 8px solid #ff4b6b;
+  width: 6px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+}
+
+
+/* Mode bicolore */
+body.theme-day .compass-arrow {
+  background: linear-gradient(
+    to top,
+    rgba(47,111,255,0.15),
+    #2f6fff 35%,
+    #2f6fff 100%
+  );
+}
+
+body.theme-day .compass-arrow::after {
+  border-bottom-color: #2f6fff;
+}
+
+body.theme-night .compass-arrow {
+  background: linear-gradient(
+    to top,
+    rgba(255,77,77,0.15),
+    #ff4d4d 35%,
+    #ff4d4d 100%
+  );
+}
+
+body.theme-night .compass-arrow::after {
+  border-bottom-color: #ff4d4d;
+}
+/* ===============================
+   🧭 MOYEU CENTRAL — MODE JOUR
+================================ */
+
+body.theme-day .compass-arrow::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+
+  width: 10px;
+  height: 10px;
+
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+
+  /* cœur clair */
+  background: #ffffff;
+
+  /* anneau bleu */
+  box-shadow:
+    0 0 0 2px rgba(47,111,255,0.9),
+    0 0 6px rgba(47,111,255,0.45);
+
+  z-index: 5;
+}
+body.theme-day .compass-arrow {
+  background: linear-gradient(
+    to top,
+    rgba(47,111,255,0.45) 0%,   /* ← début bien visible */
+    #2f6fff 35%,
+    #2f6fff 100%
+  );
 }
